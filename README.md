@@ -1,4 +1,4 @@
-# ⚙️ downloader
+# ⚙️ download_animego
 
 Script to download any anime from https://animego.org/
 
