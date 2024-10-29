@@ -17,6 +17,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, ElementNotInteractableException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
 
 URLS_PATH = "urls.txt"
 
@@ -95,14 +99,17 @@ class Element:
 
 class Engine:
 
-	ACTION_TIMEOUT = 5
-	STARTUP_TIMEOUT = 5
+	ACTION_TIMEOUT = 2
+	STARTUP_TIMEOUT = 2
 
 	def __init__(self, url: str, debug = os.environ.get('DEBUG', False)):
 		self.url = url
 		# self.service = Service(executable_path='./yandexdriver')
 		self.options = webdriver.ChromeOptions()
 		self.options.add_argument("--mute-audio")
+		self.options.add_argument("--headless")  # Enable headless mode
+		self.options.add_argument("--no-sandbox")  # Bypass OS security model
+		self.options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
 		self.DEBUG = debug
 		self.driver = webdriver.Chrome(options=self.options)
 		self.driver.maximize_window()
@@ -278,7 +285,7 @@ class Downloader:
 			if TITLE_TEXT.is_none() or re.search('[a-zA-Z]', str(TITLE_TEXT.text())) is None:
 				Logger.error("TITLE not found, specify name manually")
 				TITLE = str(input("TITLE: "))
-
+				
 		TITLE = ''.join(e for e in TITLE if e.isalnum() or e == ' ')
 		TITLE = TITLE.replace(" ", ".")
 		print(f"DOWNLOADING {TITLE}")
@@ -310,7 +317,6 @@ class Downloader:
 		print(f"AGING = {AGING}")
 
 		engine.quit()
-
 		base_urls = []
 
 		i = 1
@@ -322,7 +328,6 @@ class Downloader:
 				print(f"URL for {i} exist - skip")
 				i += 1
 				continue
-
 
 			subengine = Engine(URL)
 
@@ -378,44 +383,15 @@ class Downloader:
 
 			PLAYER_FRAME = subengine.find_element(
 				"PLAYER_FRAME",
-				'//*[@id="video-player"]/div[2]/div[1]/div[1]/iframe'
+				# '//*[@id="video-player"]/div[2]/div[1]/div[1]/iframe'
+				"/html/body/div[4]/div/div[1]/div/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/iframe"
 			)
 
 			if PLAYER_FRAME.is_none():
 				subengine.quit()
 				continue
 
-			subengine.driver.switch_to.frame(PLAYER_FRAME.selenium_element)
-
-			PLAY_BUTTON = subengine.find_element(
-				"PLAY_BUTTON",
-				'//*[@id="vjs_video_3"]/button'
-			)
-
-			if PLAY_BUTTON.is_none():
-				# sometimes xpath is different
-				PLAY_BUTTON = subengine.find_element(
-					"PLAY_BUTTON",
-					"/html/body/div[1]/div[5]/a"
-				)
-				if PLAY_BUTTON.is_none():
-					PLAY_BUTTON = subengine.find_element(
-						"PLAY_BUTTON",
-						'//*[@id="video_html5_wrapper"]/div[6]'
-					)
-					if PLAY_BUTTON.is_none():
-						subengine.quit()
-						continue
-
-			# subengine.click(PLAY_BUTTON)
-			js_script = """
-			var element = document.evaluate(arguments[0], document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-			if (element) {
-			    element.click();
-			}
-			"""
-
-			subengine.driver.execute_script(js_script, '//*[@id="vjs_video_3"]/button')
+			ActionChains(subengine.driver).move_to_element(PLAYER_FRAME.selenium_element).click().perform()
 
 			# wait for ads
 			time.sleep(120)
@@ -466,10 +442,7 @@ class Downloader:
 						continue
 
 			subengine.quit()
-
 			i += 1
-
-		engine.quit()
 
 		if VPN:
 			os.system('./vpn_off.sh')
@@ -619,12 +592,12 @@ class Downloader:
 LIST = [
 
 	# Кабанэри
-	{
-		"URL": "https://animego.org/anime/kabaneri-zheleznoy-kreposti-966",
-		"AUDIO": "Профессиональный многоголосый",
-		"SEASON": 0,
-		"VPN": False
-	},
+	# {
+	# 	"URL": "https://animego.org/anime/kabaneri-zheleznoy-kreposti-966",
+	# 	"AUDIO": "Профессиональный многоголосый",
+	# 	"SEASON": 0,
+	# 	"VPN": False
+	# },
 
 	# Фрирен
 	# {
@@ -729,16 +702,16 @@ LIST = [
 	# 	"URL": "https://animego.org/anime/death-note-v2-95",
 	# 	"AUDIO": "2x2",
 	# 	"SEASON": 0,
-	# 	"VPN": True
+	# 	"VPN": False
 	# },
 
 	# Тетрадь смерти (фильмы)
-	# {
-	# 	"URL": "https://animego.org/anime/tetrad-smerti-perezapis-glazami-boga-96",
-	# 	"AUDIO": "AniDUB",
-	# 	"SEASON": 0,
-	# 	"VPN": True
-	# },
+	{
+		"URL": "https://animego.org/anime/tetrad-smerti-perezapis-glazami-boga-96",
+		"AUDIO": "AniDUB",
+		"SEASON": 0,
+		"VPN": False
+	}
 
 	# Dr Stone (сезон 1)
 	# {
@@ -781,6 +754,22 @@ LIST = [
 	# 	"URL": "https://animego.org/anime/naruto-uragannye-hroniki-103",
 	# 	"AUDIO": "2x2",
 	# 	"SEASON": 0,
+	# 	"VPN": False
+	# }
+
+	# Жизнь без оружия
+	# {
+	# 	"URL": "https://animego.org/anime/zhizn-bez-oruzhiya-1272",
+	# 	"AUDIO": "Студийная Банда",
+	# 	"SEASON": 1,
+	# 	"VPN": False
+	# },
+
+	# Жизнь без оружия (сезон 2)
+	# {
+	# 	"URL": "https://animego.org/anime/zhizn-bez-oruzhiya-2-1583",
+	# 	"AUDIO": "Студийная Банда",
+	# 	"SEASON": 2,
 	# 	"VPN": False
 	# }
 
